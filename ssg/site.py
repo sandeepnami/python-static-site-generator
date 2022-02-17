@@ -12,7 +12,7 @@ class Site:
 
     def build(self):
         self._dest.mkdir(parents=True, exist_ok=True)
-        for path in self._source.rglob('*'):
-            if path.isdir():
+        for path in self._source.rglob('*'):   # recursive glob
+            if path.is_dir():
                 self.create_dir(path)
                 
