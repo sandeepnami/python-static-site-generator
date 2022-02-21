@@ -3,6 +3,11 @@ import shutil
 from pathlib import Path
 from typing import List
 
+import sys
+from docutils.core import publish_parts
+import markdown
+from ssg.content import Content
+
 
 class Parser:
     def __init__(self):
@@ -32,5 +37,26 @@ class ResourceParser(Parser):
 
     def parse(self, path, source, dest):
         self.copy(path, source, dest)
-        
     
+        
+class MarkdownParser(Parser):
+    extensions = [".md", ".markdown"]
+    
+    def parse(self, path: Path, source: Path, dest: Path):
+        content = Content.load(self.read(path))
+        html = markdown(content.body)
+        self.write(path, dest, html)
+        # The string \x1b[1;32m changes the color of the printed string in the terminal to green.
+        sys.stdout.write(
+            "\x1b[1;32m{} converted to HTML. Metadata: {}\n".format(path.name, content)
+        )
+        
+class ReStructuredText(Parser):
+    extensions = [".rst"]
+    def parse(self, path: Path, source: Path, dest: Path):
+        content = Content.load(self.read(path))
+        html = publish_parts(content.body, writer_name = 'html5')
+        self.write(path, dest, html['html_body'])
+        sys.stdout.write(
+            "\x1b[1;32m{} converted to HTML. Metadata: {}\n".format(path.name, content)
+        )
