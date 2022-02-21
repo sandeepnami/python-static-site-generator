@@ -50,7 +50,7 @@ class MarkdownParser(Parser):
             "\x1b[1;32m{} converted to HTML. Metadata: {}\n".format(path.name, content)
         )
         
-class ReStructuredText(Parser):
+class ReStructuredTextParser(Parser):
     extensions = [".rst"]
     def parse(self, path, source, dest):
         content = Content.load(self.read(path))
