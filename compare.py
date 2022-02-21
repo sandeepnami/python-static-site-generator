@@ -1,47 +1,62 @@
-import re
+import shutil
+import sys
 
-from collections.abc import Mapping
-from yaml import load, FullLoader
+from typing import List
+from pathlib import Path
+
+from docutils.core import publish_parts
+from markdown import markdown
+from ssg.content import Content
 
 
-class Content(Mapping):
-    __delimiter = r"^(?:-|\+){3}\s*$"
-    __regex = re.compile(__delimiter, re.MULTILINE)
+class Parser:
+    extensions: List[str] = []
 
-    @classmethod
-    def load(cls, string):
-        _, fm, content = cls.__regex.split(string, 2)
-        metadata = load(fm, Loader=FullLoader)
-        return cls(metadata, content)
+    def valid_extension(self, extension):
+        return extension in self.extensions
 
-    def __init__(self, metadata, content):
-        self.data = metadata
-        self.data["content"] = content
+    def parse(self, path: Path, source: Path, dest: Path):
+        raise NotImplementedError
 
-    @property
-    def body(self):
-        return self.data["content"]
+    def read(self, path):
+        with open(path, "r") as file:
+            return file.read()
 
-    @property
-    def type(self):
-        return self.data["type"] if "type" in self.data else None
+    def write(self, path, dest, content, ext=".html"):
+        full_path = dest / path.with_suffix(ext).name
+        with open(full_path, "w") as file:
+            file.write(content)
 
-    @type.setter
-    def type(self, type):
-        self.data["type"] = type
+    def copy(self, path, source, dest):
+        shutil.copy2(path, dest / path.relative_to(source))
 
-    def __getitem__(self, key):
-        return self.data[key]
 
-    def __iter__(self):
-        self.data.__iter__()
+class ResourceParser(Parser):
+    extensions = [".jpg", ".png", ".gif", ".css", ".html"]
 
-    def __len__(self):
-        return len(self.data)
+    def parse(self, path, source, dest):
+        self.copy(path, source, dest)
 
-    def __repr__(self):
-        data = {}
-        for key, value in self.data.items():
-            if key != "content":
-                data[key] = value
-        return str(data)
+
+class MarkdownParser(Parser):
+    extensions = [".md", ".markdown"]
+
+    def parse(self, path, source, dest):
+        content = Content.load(self.read(path))
+        html = markdown(content.body)
+        self.write(path, dest, html)
+        sys.stdout.write(
+            "\x1b[1;32m{} converted to HTML. Metadata: {}\n".format(path.name, content)
+        )
+
+
+class ReStructuredTextParser(Parser):
+    extensions = [".rst"]
+
+    def parse(self, path, source, dest):
+        content = Content.load(self.read(path))
+        html = publish_parts(content.body, writer_name="html5")
+        self.write(path, dest, html["html_body"])
+        sys.stdout.write(
+            "\x1b[1;32m{} converted to HTML. Metadata: {}\n".format(path.name, content)
+        )
