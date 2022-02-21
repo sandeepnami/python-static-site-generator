@@ -1,4 +1,6 @@
+from curses import setupterm
 import re
+from sys import settrace
 
 from yaml import load, FullLoader
 from collections.abc import Mapping
@@ -22,3 +24,12 @@ class Content(Mapping):
     @property
     def body(self):
         return self.data["content"]
+
+    @property
+    def type(self):
+        return self.data["type"] if "type" in self.data else None
+    
+    @type.setter
+    def set_type(self, type):
+        self.data["type"] = type
+     
